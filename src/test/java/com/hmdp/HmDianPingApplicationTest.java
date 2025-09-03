@@ -8,12 +8,18 @@ import com.hmdp.utils.RedisldWoker;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static com.hmdp.utils.RedisConstants.SHOP_GEO_KEY;
 
 @SpringBootTest
 public class HmDianPingApplicationTest {
@@ -28,6 +34,8 @@ public class HmDianPingApplicationTest {
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private RedisldWoker redisldWoker;
+
+
 
 
 
@@ -282,5 +290,30 @@ public class HmDianPingApplicationTest {
         System.out.println("最终缓存状态: " + (finalCacheValue != null ? "已缓存" : "未缓存"));
         
         System.out.println("=== 测试结束 ===");
+    }
+
+
+    @Test
+    void loadShopDate(){
+        //获取店铺集合
+        List<Shop> list = shopService.list();
+        //根据店铺类型Id进行分组
+        Map<Long, List<Shop>> map = list.stream().collect(Collectors.groupingBy(Shop::getTypeId));
+        //将分组后的数据存入缓存
+        for (Map.Entry<Long, List<Shop>> entry : map.entrySet()) {
+            //获得类型id
+            Long typeId = entry.getKey();
+            String key = SHOP_GEO_KEY + typeId;
+            //获得店铺集合
+            List<Shop> shops = entry.getValue();
+            //写入REDIS
+            for (Shop shop : shops) {
+                stringRedisTemplate.opsForGeo().add(key,new Point(shop.getX(), shop.getY()), shop.getId().toString());
+            }
+
+
+        }
+
+
     }
 }

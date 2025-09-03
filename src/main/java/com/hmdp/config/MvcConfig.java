@@ -5,6 +5,7 @@ import com.hmdp.utils.RefreshTokenInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import javax.annotation.Resource;
@@ -13,6 +14,14 @@ import javax.annotation.Resource;
 public class MvcConfig implements WebMvcConfigurer {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 配置静态资源映射，将 /imgs/** 路径映射到 uploads/imgs/ 目录
+        registry.addResourceHandler("/imgs/**")
+                .addResourceLocations("file:uploads/imgs/");
+    }
+    
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new Logininterceptor()).excludePathPatterns(
@@ -23,6 +32,7 @@ public class MvcConfig implements WebMvcConfigurer {
                 "/shop-type/**",   // 商铺类型接口
                 "/voucher/**",     // 优惠券接口（如果需要公开）
                 "/upload/**",      // 文件上传（如果需要公开）
+                "/imgs/**",        // 静态图片资源
                 "/error"           // 错误页面
 
                 ).order(1);

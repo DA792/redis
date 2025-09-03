@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黑马点评 API 测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 200px; }
+        .result { background: #f8f9fa; padding: 10px; border-radius: 3px; margin: 10px 0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🎫 黑马点评 API 测试工具</h1>
+    
+    <div class="section">
+        <h3>🔑 Token 设置</h3>
+        <input type="text" id="tokenInput" placeholder="输入您的token" value="234ff5ca7c614b01af63214ff5f197fa">
+        <button onclick="setToken()">设置Token</button>
+        <div id="tokenStatus"></div>
+    </div>
+
+    <div class="section">
+        <h3>👤 用户信息</h3>
+        <button onclick="getUserInfo()">获取用户信息</button>
+        <button onclick="getMyBlogs()">获取我的博客</button>
+        <button onclick="logout()" style="background: #dc3545;">登出</button>
+    </div>
+
+    <div class="section">
+        <h3>🎫 优惠券测试</h3>
+        <input type="number" id="voucherIdInput" placeholder="优惠券ID" value="2">
+        <button onclick="seckillVoucher()">秒杀优惠券</button>
+        <button onclick="getVoucherList()">查看优惠券列表</button>
+    </div>
+
+    <div class="section">
+        <h3>📝 结果显示</h3>
+        <div id="result" class="result">等待请求...</div>
+    </div>
+
+    <script>
+        let currentToken = '234ff5ca7c614b01af63214ff5f197fa';
+        const baseUrl = 'http://127.0.0.1:8081';
+
+        function setToken() {
+            currentToken = document.getElementById('tokenInput').value;
+            document.getElementById('tokenStatus').innerHTML = 
+                `<span style="color: green;">✅ Token已设置: ${currentToken.substring(0, 8)}...</span>`;
+        }
+
+        function makeRequest(url, method = 'GET', body = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'Authorization': currentToken,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            return fetch(baseUrl + url, options)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('result').textContent = 
+                        `✅ 请求成功:\n${JSON.stringify(data, null, 2)}`;
+                    return data;
+                })
+                .catch(error => {
+                    document.getElementById('result').textContent = 
+                        `❌ 请求失败:\n${error.message}`;
+                    console.error('Error:', error);
+                });
+        }
+
+        function getUserInfo() {
+            makeRequest('/user/me');
+        }
+
+        function getMyBlogs() {
+            makeRequest('/blog/of/me?current=1');
+        }
+
+        function seckillVoucher() {
+            const voucherId = document.getElementById('voucherIdInput').value;
+            makeRequest(`/voucher-order/seckill/${voucherId}`, 'POST');
+        }
+
+        function getVoucherList() {
+            makeRequest('/voucher/list/1');
+        }
+
+        function logout() {
+            makeRequest('/user/logout', 'POST')
+                .then(data => {
+                    if (data && data.success) {
+                        document.getElementById('tokenStatus').innerHTML = 
+                            '<span style="color: orange;">⚠️ 已登出，请重新设置token</span>';
+                        document.getElementById('tokenInput').value = '';
+                        currentToken = '';
+                    }
+                });
+        }
+
+        // 页面加载时设置token
+        window.onload = function() {
+            setToken();
+        }
+    </script>
+</body>
+</html> 

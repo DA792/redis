@@ -12,17 +12,23 @@ import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexPatterns;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.Year;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -128,6 +134,79 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
 
 
+    }
+
+    @Override
+    public Result logout(String token) {
+        return null;
+    }
+
+    /**
+     * 用户签到
+     * @return
+     */
+    @Override
+    public Result sign() {
+        //获取用户id
+        Long userId = UserHolder.getUser().getId();
+        //获取当前日期
+        LocalDate now = LocalDate.now();
+        String keylast = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        //拼接key
+        String key = USER_SIGN_KEY + userId + keylast;
+        //获取当前第几天
+        int dayOfMonth = now.getDayOfMonth();
+        //存入redis
+        stringRedisTemplate.opsForValue().setBit(key,dayOfMonth-1,true);
+        return Result.ok();
+    }
+
+    /**
+     * 查询连续签到天数
+     * @return
+     */
+    @Override
+    public Result signCount() {
+        //获取用户id
+        Long userId = UserHolder.getUser().getId();
+        //获取当前日期
+        LocalDate now = LocalDate.now();
+        String keylast = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        //拼接key
+        String key = USER_SIGN_KEY + userId + keylast;
+        //获取当前第几天
+        int dayOfMonth = now.getDayOfMonth();
+        //获取本月截至今天的签到记录，得到一个十进制数字
+        List<Long> result = stringRedisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0)
+        );
+        if (result == null || result.isEmpty()) {
+            return Result.ok(0);
+        }
+        Long num = result.get(0);
+        if (num == null || num == 0) {
+            return Result.ok(0);
+
+        }
+        int count = 0;
+        //循环遍历
+        while (true) {
+
+            //与1做或运算
+            if ((num & 1) == 0) {
+                //得到为0，break
+                break;
+            } else {
+                //得到为1，计数器加1
+                count++;
+
+            }
+            num >>>= 1;
+
+        }
+        return Result.ok(count);
     }
 
     private User creatnewUserWithPhone(String phone) {
